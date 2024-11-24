@@ -1,4 +1,5 @@
 import flet as ft
+import math
 
 
 def main(page: ft.Page):
@@ -7,6 +8,11 @@ def main(page: ft.Page):
 
     page.add(
         result,
+        ft.ElevatedButton(text="1/x"),
+        ft.ElevatedButton(text="x!"),
+        ft.ElevatedButton(text="x²"),
+        ft.ElevatedButton(text="x³"),
+        ft.ElevatedButton(text="10^x"),
         ft.ElevatedButton(text="AC"),
         ft.ElevatedButton(text="+/-"),
         ft.ElevatedButton(text="%"),
@@ -30,3 +36,4 @@ def main(page: ft.Page):
 
 
 ft.app(target=main)
+

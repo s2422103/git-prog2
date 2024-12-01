@@ -111,3 +111,91 @@ def main(page: ft.Page):
 
     # プログレスバーの追加
     progress_bar = ft.ProgressBar(visible=False)
+
+    # 天気予報表示
+    forecast_view = ft.Column(
+        expand=True,
+        spacing=10,
+        alignment=ft.MainAxisAlignment.START,
+    )
+
+    def fetch_data(url: str) -> Dict:
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            show_error(f"データ取得エラー: {str(e)}")
+            return {}
+
+    def load_region_list():
+        try:
+            progress_bar.visible = True
+            page.update()
+
+            data = fetch_data("http://www.jma.go.jp/bosai/common/const/area.json")
+            if "offices" in data:
+                area_cache.update(data["offices"])
+                update_region_menu()
+            else:
+                show_error("地域データの形式が予期したものと異なります。")
+        except Exception as e:
+            show_error(f"地域データの読み込みに失敗しました: {str(e)}")
+        finally:
+            progress_bar.visible = False
+            page.update()
+
+    def update_region_menu():
+        region_list_view.controls.clear()
+        for code, area in area_cache.items():
+            region_list_view.controls.append(
+                ft.ListTile(
+                    leading=ft.Icon(ft.icons.LOCATION_ON),
+                    title=ft.Text(area["name"]),
+                    subtitle=ft.Text(f"地域コード: {code}"),
+                    on_click=lambda e, code=code: load_forecast(code),
+                )
+            )
+        page.update()
+
+    def load_forecast(region_code: str):
+        try:
+            progress_bar.visible = True
+            page.update()
+
+            url = f"https://www.jma.go.jp/bosai/forecast/data/forecast/{region_code}.json"
+            data = fetch_data(url)
+
+            if data:
+                display_forecast(data)
+            else:
+                show_error("天気予報データが見つかりません。")
+        except Exception as e:
+            show_error(f"天気予報の取得に失敗しました: {str(e)}")
+        finally:
+            progress_bar.visible = False
+            page.update()
+
+    # 天気予報を表示
+    def display_forecast(data: Dict):
+        forecast_view.controls.clear()
+        forecasts = data[0]["timeSeries"][0]
+        # 予報日時と天気を表示
+        for i, date in enumerate(forecasts["timeDefines"]):
+            weather_code = forecasts["areas"][0]["weatherCodes"][i]
+            forecast_view.controls.append(
+                ft.Card(
+                    content=ft.Container(
+                        content=ft.Column(
+                            [
+                                ft.Text(format_date(date), size=18, weight="bold"),
+                                ft.Text(get_weather_text(weather_code)),
+                                ft.Text(get_weather_icon(weather_code), size=40),
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER,
+                        ),
+                        padding=10,
+                    )
+                )
+            )
+        page.update()

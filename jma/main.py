@@ -199,3 +199,43 @@ def main(page: ft.Page):
                 )
             )
         page.update()
+
+    # リストアイテムを作成
+    def update_list():
+        region_list_view.controls.clear()
+        for code, area in data.get("offices", {}).items():
+            region_list_view.controls.append(
+                ft.ListTile(
+                    leading=ft.Icon(ft.icons.LOCATION_ON),
+                    title=ft.Text(area["name"]),
+                    subtitle=ft.Text(f"地域コード: {code}"),
+                    on_click=lambda e, code=code: load_forecast(code),
+                )
+            )
+        page.update()
+
+    # ページにリストと選択情報、天気予報を追加
+    page.add(
+        ft.Row(
+            [
+                ft.Container(
+                    width=300,
+                    content=region_list_view,
+                    bgcolor=ft.colors.SURFACE_VARIANT,
+                ),
+                ft.VerticalDivider(width=1),
+                ft.Column(
+                    [selected_item, forecast_view],
+                    alignment=ft.MainAxisAlignment.START,
+                    expand=True,
+                ),
+            ],
+            expand=True,
+        ),
+        progress_bar,
+    )
+
+    # 地域リストを読み込む
+    load_region_list()
+
+ft.app(main)

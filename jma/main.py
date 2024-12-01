@@ -90,3 +90,24 @@ def get_weather_icon(code: str) -> str:
     # 聞いたことも無い天気の場合は❓を返す
     return weather_icons.get(code, "❓")
 
+def main(page: ft.Page):
+    page.title = "地域選択と天気予報表示"
+    page.theme_mode = "light"
+    # ページの背景色を設定
+    page.bgcolor = ft.colors.LIGHT_BLUE_800
+
+
+    # 選択情報を表示するテキスト
+    selected_item = ft.Text("三日間の天気", size=20, color=ft.colors.WHITE)
+    selected_index = None  # 選択されたアイテムのインデックス
+    forecast_view = ft.Column(spacing=10, expand=True)
+
+    # 地域リスト
+    region_list_view = ft.ListView(
+        expand=True,
+        spacing=10,
+        padding=10,
+    )
+
+    # プログレスバーの追加
+    progress_bar = ft.ProgressBar(visible=False)

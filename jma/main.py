@@ -14,3 +14,8 @@ try:
         data = json.load(file)
 except FileNotFoundError:
     raise FileNotFoundError(f"JSON ファイル '{json_path}' が見つかりません。")
+
+# サンプル天気予報データ
+weather_sample = [
+    {"date": (datetime.now() + timedelta(days=i)).isoformat(), "code": "100"} for i in range(7)
+]

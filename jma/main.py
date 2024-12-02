@@ -1,72 +1,28 @@
 import flet as ft
 import json
-import os
 import requests
-from datetime import datetime, timedelta
-from typing import Dict
+from datetime import datetime
 
-# JSON ファイルのパス
-json_path = os.path.join(os.path.dirname(__file__), 'data.json')
+# ローカルJSONデータのファイルパス
+DATA_FILE = "jma/data.json"
+WEATHER_API_URL = "https://www.jma.go.jp/bosai/forecast/data/forecast/{office_code}.json"
 
-# JSON ファイルを読み込む
-try:
-    with open(json_path, 'r', encoding='utf-8') as file:
-        data = json.load(file)
-except FileNotFoundError:
-    raise FileNotFoundError(f"JSON ファイル '{json_path}' が見つかりません。")
-
-# サンプル天気予報データ
-weather_sample = [
-    {"date": (datetime.now() + timedelta(days=i)).isoformat(), "code": "100"} for i in range(7)
-]
-
-# 地域キャッシュ
-area_cache: Dict[str, Dict] = {}
-
+# 日付フォーマット関数
 def format_date(date_str: str) -> str:
-# 日付を日本語表記に変換
     date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
     return date.strftime("%Y年%m月%d日")
 
-
-def get_weather_text(code: str) -> str:
-# 天気コードに対応する天気を返す
-    weather_codes = {
-        "100": "晴れ",
-        "101": "晴れ時々曇り",
-        "102": "晴れ時々雨",
-        "200": "曇り",
-        "201": "曇り時々晴れ",
-        "202": "曇り時々雨",
-        "218": "曇り時々雪",
-        "270": "雪時々曇り",
-        "300": "雨",
-        "400": "雪",
-        "500": "雷雨",
-        "413": "雪のち雨",
-        "206": "雨時々曇り",
-        "111": "雨時々晴れ",
-        "112": "雨時々雪",
-        "211": "雪時々晴れ",
-        "206": "雨時々曇り",
-        "212": "雪時々曇り",
-        "313": "雪のち雨",
-        "314": "雨のち雪",
-        "203": "曇り時々雪",
-        "302": "雪",
-        "114": "雪時々晴れ",
-    }
-    return weather_codes.get(code, f"不明な天気 (コード: {code})")
-
-def get_weather_icon(code: str) -> str:
-# 天気コードに対応する絵文字を返す
+# 天気アイコンを取得する関数
+def get_weather_icon(weather_code: str) -> str:
     weather_icons = {
         "100": "☀️",  # 晴れ
         "101": "🌤️",  # 晴れ時々曇り
         "102": "🌦️",  # 晴れ時々雨
         "200": "☁️",  # 曇り
         "300": "🌧️",  # 雨
+        "317": "🌧️❄️☁️",  # 雨か雪のち曇り
         "400": "❄️",  # 雪
+        "402": "❄️☁️",  # 雪時々曇り
         "500": "⛈️",  # 雷雨
         "413": "❄️→🌧️",  # 雪のち雨
         "314": "🌧️→❄️",  # 雨のち雪
@@ -83,145 +39,181 @@ def get_weather_icon(code: str) -> str:
         "203": "☁️❄️",
         "302": "❄️",
         "114": "❄️☀️",
-
-
-
+        "214":"☁️🌧️",
+        "204":"☁️❄️⚡️",
+        "207":"☁️🌧️❄️",
+        "110":"☀️☁️",
     }
-    # 聞いたことも無い天気の場合は❓を返す
-    return weather_icons.get(code, "❓")
+    return weather_icons.get(weather_code, "❓")
+
+def get_weather_text(code: str) -> str:
+    weather_codes = {
+        "100": "晴れ",
+        "101": "晴れ時々曇り",
+        "102": "晴れ時々雨",
+        "200": "曇り",
+        "201": "曇り時々晴れ",
+        "202": "曇り時々雨",
+        "218": "曇り時々雪",
+        "270": "雪時々曇り",
+        "300": "雨",
+        "317": "雨か雪のち曇り",
+        "400": "雪",
+        "402": "雪時々曇り",
+        "500": "雷雨",
+        "413": "雪のち雨",
+        "206": "雨時々曇り",
+        "111": "雨時々晴れ",
+        "112": "雨時々雪",
+        "211": "雪時々晴れ",
+        "206": "雨時々曇り",
+        "212": "雪時々曇り",
+        "313": "雪のち雨",
+        "314": "雨のち雪",
+        "203": "曇り時々雪",
+        "302": "雪",
+        "114": "雪時々晴れ",
+        "214":"曇り後雨",
+        "204":"曇り時々雪で雷を伴う",
+        "207":"曇り時々雨か雪",
+        "110":"晴れのち時々曇り",
+    }
+    return weather_codes.get(code, f"不明な天気 (コード: {code})")
 
 def main(page: ft.Page):
-    page.title = "地域選択と天気予報表示"
-    page.theme_mode = "light"
-    # ページの背景色を設定
-    page.bgcolor = ft.colors.LIGHT_BLUE_800
+    page.title = "天気予報アプリ"
+    page.scroll = ft.ScrollMode.AUTO
+    page.bgcolor = ft.colors.WHITE
+
+    # JSONデータを読み込む
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as file:
+            data = json.load(file)
+    except FileNotFoundError:
+        page.add(ft.Text("JSONファイルが見つかりません。", color=ft.colors.RED))
+        return
+    except json.JSONDecodeError as e:
+        page.add(ft.Text(f"JSONデータの読み込みに失敗しました: {e}", color=ft.colors.RED))
+        return
+
+    centers = data.get("centers", {})
+    offices = data.get("offices", {})
+    # 天気情報を表示する領域
+    weather_display = ft.Column(scroll=ft.ScrollMode.AUTO, expand=True)
+
+    # 天気情報を取得して表示する関数
+    def display_weather(office_code: str):
+        weather_display.controls.clear()
+        try:
+            # 天気情報を取得
+            response = requests.get(WEATHER_API_URL.format(office_code=office_code))
+            response.raise_for_status()
+            weather_data = response.json()
+
+            # 気温情報を取得
+            response = requests.get(WEATHER_API_URL.format(office_code=office_code))
+            response.raise_for_status()
+            weather_data = response.json()
+            temp_info = weather_data[0].get("tempAverage", {}).get("areas", [])
+            print(f"DEBUG: tempAverage areas = {temp_info}")  # デバッグ用出力
+            if temp_info:
+                min_temp = temp_info[0].get("min", "データなし")
+                max_temp = temp_info[0].get("max", "データなし")
+            else:
+                min_temp = "データなし"
+                max_temp = "データなし"
+
+            # 天気情報を表示
+            for i, day in enumerate(weather_data[0]["timeSeries"][0]["timeDefines"]):
+                date = format_date(day)
+                # i 番目の天気コードを取得
+                weather_code = weather_data[0]["timeSeries"][0]["areas"][0]["weatherCodes"][i]
+                weather_display.controls.append(
+                    ft.Card(
+                        content=ft.Container(
+                            content=ft.Column(
+                                [
+                                    ft.Text(date, size=16, weight="bold"),
+                                    ft.Text(get_weather_icon(weather_code)),
+                                    ft.Text(get_weather_text(weather_code)),
+                                    ft.Text(f"天気コード: {weather_code}"),
+                                    ft.Text(f"最低気温: {min_temp}°C"),
+                                    ft.Text(f"最高気温: {max_temp}°C"),
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER,
+                            ),
+                            padding=10,
+                        )
+                    )
+                )
+        except Exception as e:
+            weather_display.controls.append(ft.Text(f"天気情報の取得に失敗しました: {e}", color=ft.colors.RED))
+
+        page.update()
+
+    # 左側のリスト
+    center_tiles = []
+    for center_key, center_info in centers.items():
+        # そのセンターに関連するオフィスを取得
+        related_offices = [
+            offices[office_key]
+            for office_key in center_info.get("children", [])
+            if office_key in offices
+        ]
+        # 選択情報を表示するテキスト
+        selected_item = ft.Text("", size=20, color=ft.colors.BLACK)
+        selected_index = None  # 選択されたアイテムのインデックス
+        forecast_view = ft.Column(spacing=10, expand=True)
 
 
-    # 選択情報を表示するテキスト
-    selected_item = ft.Text("三日間の天気", size=20, color=ft.colors.WHITE)
-    selected_index = None  # 選択されたアイテムのインデックス
-    forecast_view = ft.Column(spacing=10, expand=True)
+        # オフィスリスト
+        office_tiles = [
+            ft.ListTile(
+                title=ft.Text(f"{offices[office_key]['name']} ({offices[office_key]['enName']})"),
+                on_click=lambda e, office_code=office_key: display_weather(office_code),
+            )
+            for office_key in center_info.get("children", [])
+            if office_key in offices
+        ]
+            # 地域リスト
+        region_list_view = ft.ListView(
+            expand=True,
+            spacing=10,
+            padding=10,
+        )
 
-    # 地域リスト
-    region_list_view = ft.ListView(
-        expand=True,
-        spacing=10,
+        # プログレスバーの追加
+        progress_bar = ft.ProgressBar(visible=False)
+
+        # ExpansionTile
+        center_tiles.append(
+            ft.ExpansionTile(
+                title=ft.Text(center_info["name"], color=ft.colors.BLACK),
+                controls=office_tiles,
+                initially_expanded=False,
+                text_color=ft.colors.BLACK,
+                collapsed_text_color=ft.colors.GREY,
+            )
+        )
+
+    # 左側のリスト
+    region_list = ft.Container(
+        content=ft.Column(
+            controls=center_tiles,
+            scroll=ft.ScrollMode.AUTO,
+        ),
+        width=250,
+        bgcolor=ft.colors.LIGHT_BLUE_50,
         padding=10,
     )
 
-    # プログレスバーの追加
-    progress_bar = ft.ProgressBar(visible=False)
-
-    # 天気予報表示
-    forecast_view = ft.Column(
-        expand=True,
-        spacing=10,
-        alignment=ft.MainAxisAlignment.START,
-    )
-
-    def fetch_data(url: str) -> Dict:
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            return response.json()
-        except requests.RequestException as e:
-            show_error(f"データ取得エラー: {str(e)}")
-            return {}
-
-    def load_region_list():
-        try:
-            progress_bar.visible = True
-            page.update()
-
-            data = fetch_data("http://www.jma.go.jp/bosai/common/const/area.json")
-            if "offices" in data:
-                area_cache.update(data["offices"])
-                update_region_menu()
-            else:
-                show_error("地域データの形式が予期したものと異なります。")
-        except Exception as e:
-            show_error(f"地域データの読み込みに失敗しました: {str(e)}")
-        finally:
-            progress_bar.visible = False
-            page.update()
-
-    def update_region_menu():
-        region_list_view.controls.clear()
-        for code, area in area_cache.items():
-            region_list_view.controls.append(
-                ft.ListTile(
-                    leading=ft.Icon(ft.icons.LOCATION_ON),
-                    title=ft.Text(area["name"]),
-                    subtitle=ft.Text(f"地域コード: {code}"),
-                    on_click=lambda e, code=code: load_forecast(code),
-                )
-            )
-        page.update()
-
-    def load_forecast(region_code: str):
-        try:
-            progress_bar.visible = True
-            page.update()
-
-            url = f"https://www.jma.go.jp/bosai/forecast/data/forecast/{region_code}.json"
-            data = fetch_data(url)
-
-            if data:
-                display_forecast(data)
-            else:
-                show_error("天気予報データが見つかりません。")
-        except Exception as e:
-            show_error(f"天気予報の取得に失敗しました: {str(e)}")
-        finally:
-            progress_bar.visible = False
-            page.update()
-
-    # 天気予報を表示
-    def display_forecast(data: Dict):
-        forecast_view.controls.clear()
-        forecasts = data[0]["timeSeries"][0]
-        # 予報日時と天気を表示
-        for i, date in enumerate(forecasts["timeDefines"]):
-            weather_code = forecasts["areas"][0]["weatherCodes"][i]
-            forecast_view.controls.append(
-                ft.Card(
-                    content=ft.Container(
-                        content=ft.Column(
-                            [
-                                ft.Text(format_date(date), size=18, weight="bold"),
-                                ft.Text(get_weather_text(weather_code)),
-                                ft.Text(get_weather_icon(weather_code), size=40),
-                            ],
-                            alignment=ft.MainAxisAlignment.CENTER,
-                        ),
-                        padding=10,
-                    )
-                )
-            )
-        page.update()
-
-    # リストアイテムを作成
-    def update_list():
-        region_list_view.controls.clear()
-        for code, area in data.get("offices", {}).items():
-            region_list_view.controls.append(
-                ft.ListTile(
-                    leading=ft.Icon(ft.icons.LOCATION_ON),
-                    title=ft.Text(area["name"]),
-                    subtitle=ft.Text(f"地域コード: {code}"),
-                    on_click=lambda e, code=code: load_forecast(code),
-                )
-            )
-        page.update()
-
-    # ページにリストと選択情報、天気予報を追加
+    # レイアウト
     page.add(
         ft.Row(
-            [
+            controls=[
+                region_list,
                 ft.Container(
-                    width=300,
-                    content=region_list_view,
-                    bgcolor=ft.colors.SURFACE_VARIANT,
+                    content=weather_display, padding=10
                 ),
                 ft.VerticalDivider(width=1),
                 ft.Column(
@@ -235,7 +227,5 @@ def main(page: ft.Page):
         progress_bar,
     )
 
-    # 地域リストを読み込む
-    load_region_list()
-
-ft.app(main)
+# 実行
+ft.app(target=main)

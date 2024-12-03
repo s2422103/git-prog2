@@ -43,6 +43,7 @@ def get_weather_icon(weather_code: str) -> str:
         "204":"☁️❄️⚡️",
         "207":"☁️🌧️❄️",
         "110":"☀️☁️",
+        "205":"☁️❄️"
     }
     return weather_icons.get(weather_code, "❓")
 
@@ -77,6 +78,7 @@ def get_weather_text(code: str) -> str:
         "204":"曇り時々雪で雷を伴う",
         "207":"曇り時々雨か雪",
         "110":"晴れのち時々曇り",
+        "205":"曇り時々雪"
     }
     return weather_codes.get(code, f"不明な天気 (コード: {code})")
 
@@ -110,19 +112,7 @@ def main(page: ft.Page):
             response.raise_for_status()
             weather_data = response.json()
 
-            # 気温情報を取得
-            response = requests.get(WEATHER_API_URL.format(office_code=office_code))
-            response.raise_for_status()
-            weather_data = response.json()
-            temp_info = weather_data[0].get("tempAverage", {}).get("areas", [])
-            print(f"DEBUG: tempAverage areas = {temp_info}")  # デバッグ用出力
-            if temp_info:
-                min_temp = temp_info[0].get("min", "データなし")
-                max_temp = temp_info[0].get("max", "データなし")
-            else:
-                min_temp = "データなし"
-                max_temp = "データなし"
-
+            
             # 天気情報を表示
             for i, day in enumerate(weather_data[0]["timeSeries"][0]["timeDefines"]):
                 date = format_date(day)
@@ -137,8 +127,6 @@ def main(page: ft.Page):
                                     ft.Text(get_weather_icon(weather_code)),
                                     ft.Text(get_weather_text(weather_code)),
                                     ft.Text(f"天気コード: {weather_code}"),
-                                    ft.Text(f"最低気温: {min_temp}°C"),
-                                    ft.Text(f"最高気温: {max_temp}°C"),
                                 ],
                                 alignment=ft.MainAxisAlignment.CENTER,
                             ),

@@ -43,7 +43,9 @@ def get_weather_icon(weather_code: str) -> str:
         "204":"☁️❄️⚡️",
         "207":"☁️🌧️❄️",
         "110":"☀️☁️",
-        "205":"☁️❄️"
+        "205":"☁️❄️",
+        "217":"☁️❄️",
+        "304":"❄️🌧️",
     }
     return weather_icons.get(weather_code, "❓")
 
@@ -78,7 +80,9 @@ def get_weather_text(code: str) -> str:
         "204":"曇り時々雪で雷を伴う",
         "207":"曇り時々雨か雪",
         "110":"晴れのち時々曇り",
-        "205":"曇り時々雪"
+        "205":"曇り時々雪",
+        "217":"曇り後雪",
+        "304":"雪か雨",
     }
     return weather_codes.get(code, f"不明な天気 (コード: {code})")
 

@@ -29,7 +29,33 @@ class WeatherDB:
                     UNIQUE(area_code, forecast_date)
                 )
             """)
+def save_forecast(self, area_code: str, area_name: str, forecast_date: str,
+                     weather_code: str, temp_min: int, temp_max: int):
+        # 予報データをDBに保存。既存のデータがあれば上書きする
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO weather_forecasts
+                (area_code, area_name, forecast_date, weather_code, temp_min, temp_max)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (area_code, area_name, forecast_date, weather_code, temp_min, temp_max))
 
+def get_forecast_history(self, area_code: str = None, start_date: str = None, end_date: str = None):
+        # 過去の予報データを指定された条件で取得する
+        with sqlite3.connect(self.db_path) as conn:
+            query = "SELECT * FROM weather_forecasts WHERE 1=1"
+            params = []
+            
+            if area_code:
+                query += " AND area_code = ?"
+                params.append(area_code) 
+            if start_date:
+                query += " AND forecast_date >= ?"
+                params.append(start_date)
+            if end_date:
+                query += " AND forecast_date <= ?"
+                params.append(end_date) 
+            query += " ORDER BY forecast_date DESC"
+            return conn.execute(query, params).fetchall()
 # 天気アイコンを取得する関数
 def get_weather_icon(weather_code: str) -> str:
     weather_icons = {

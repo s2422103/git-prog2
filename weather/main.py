@@ -1,16 +1,34 @@
 import flet as ft
-import json
 import requests
+import sqlite3
 from datetime import datetime
+from typing import Dict
 
-# ローカルJSONデータのファイルパス
-DATA_FILE = "jma/data.json"
-WEATHER_API_URL = "https://www.jma.go.jp/bosai/forecast/data/forecast/{office_code}.json"
+# 地域コードをキーにして地域名を取得できるようにする
+area_cache: Dict[str, Dict] = {}
 
-# 日付フォーマット関数
-def format_date(date_str: str) -> str:
-    date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-    return date.strftime("%Y年%m月%d日")
+class WeatherDB:
+    def __init__(self, db_path="weather.db"):
+        # DBファイルのパスを指定
+        self.db_path = db_path
+        self.init_db()
+
+    def init_db(self):
+        # DBがなければ新規作成し、テーブルを初期化する
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS weather_forecasts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    area_code TEXT NOT NULL,
+                    area_name TEXT NOT NULL,
+                    forecast_date DATE NOT NULL,
+                    weather_code TEXT NOT NULL,
+                    temp_min INTEGER,
+                    temp_max INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(area_code, forecast_date)
+                )
+            """)
 
 # 天気アイコンを取得する関数
 def get_weather_icon(weather_code: str) -> str:

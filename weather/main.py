@@ -64,6 +64,46 @@ def get_forecast_by_date(self, area_code: str, selected_date: str):
                 WHERE area_code = ? AND date(forecast_date) = date(?)
                 ORDER BY forecast_date
             """, (area_code, selected_date)).fetchall()
+def main(page: ft.Page):
+    # アプリケーションのページ設定
+    page.title = "地域ごとの天気予報"
+    page.theme_mode = "light"
+
+    # WeatherDBインスタンスを作成
+    db = WeatherDB()
+    current_region_code = None
+
+    # プログレスバーの初期設定
+    progress_bar = ft.ProgressBar(visible=False)
+
+    # エラーメッセージを表示する関数
+    def show_error(message: str):
+        page.snack_bar = ft.SnackBar(
+            content=ft.Text(message),
+            action="閉じる",
+            bgcolor=ft.colors.ERROR,
+        )
+        page.snack_bar.open = True
+        page.update()
+# 地域一覧を表示するListView
+    region_list_view = ft.ListView(
+        expand=True,
+        spacing=10,
+        padding=10,
+    )
+
+    # 天気予報表示用のビュー
+    forecast_view = ft.Column(
+        expand=True,
+        spacing=10,
+        alignment=ft.MainAxisAlignment.START,
+    )
+
+    # 過去の天気予報を表示するビュー
+    history_view = ft.Column(
+        visible=False,
+        expand=True,
+    )
 # 天気アイコンを取得する関数
 def get_weather_icon(weather_code: str) -> str:
     weather_icons = {

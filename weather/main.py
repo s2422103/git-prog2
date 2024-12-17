@@ -149,6 +149,49 @@ def main(page: ft.Page):
                        color=ft.colors.ERROR)
             ]
         page.update()
+# APIからデータを取得する関数
+    def fetch_data(url: str) -> Dict:
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            show_error(f"データ取得エラー: {str(e)}")
+    # 地域リストを読み込む関数
+    def load_region_list():
+        try:
+            progress_bar.visible = True
+            page.update()
+
+            # 気象庁のAPIから地域データを取得
+            data = fetch_data("http://www.jma.go.jp/bosai/common/const/area.json")
+            if "offices" in data:
+                area_cache.update(data["offices"])
+                update_region_menu()
+            else:
+                show_error("地域データの形式が予期したものと異なります。")
+        except Exception as e:
+            show_error(f"地域データの読み込みに失敗しました: {str(e)}")
+        finally:
+            progress_bar.visible = False
+            page.update()
+
+    # 地域選択メニューを更新する関数
+    def update_region_menu():
+        region_list_view.controls.clear()
+        for code, area in area_cache.items():
+            region_list_view.controls.append(
+                ft.ListTile(
+                    leading=ft.Icon(ft.icons.LOCATION_ON),
+                    title=ft.Text(area["name"]),
+                    subtitle=ft.Text(f"地域コード: {code}"),
+                    on_click=lambda e, code=code: load_forecast(code),
+                )
+            )
+        page.update()
+
+
+
 # 天気アイコンを取得する関数
 def get_weather_icon(weather_code: str) -> str:
     weather_icons = {

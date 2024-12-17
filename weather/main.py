@@ -189,6 +189,53 @@ def main(page: ft.Page):
                 )
             )
         page.update()
+  # 選択した地域の天気予報を取得する関数
+    def load_forecast(region_code: str):
+        try:
+            global current_region_code
+            current_region_code = region_code
+            progress_bar.visible = True
+            page.update()
+
+            # 気象庁のAPIから天気予報データを取得
+            url = f"https://www.jma.go.jp/bosai/forecast/data/forecast/{region_code}.json"
+            data = fetch_data(url)
+
+            if data:
+                display_forecast(data)
+
+                # 天気予報データをDBに保存
+                weekly_data = data[1]
+                weather_forecasts = weekly_data["timeSeries"][0]
+                temp_forecasts = weekly_data["timeSeries"][1]
+                area_name = area_cache[region_code]["name"]
+
+                # 各日の予報データをDBに保存
+                for i in range(len(weather_forecasts["timeDefines"])):
+                    date = weather_forecasts["timeDefines"][i]
+                    weather_code = weather_forecasts["areas"][0]["weatherCodes"][i]
+
+                    try:
+                        min_temp = temp_forecasts["areas"][0]["tempsMin"][i]
+                        max_temp = temp_forecasts["areas"][0]["tempsMax"][i]
+                    except (IndexError, KeyError):
+                        min_temp = max_temp = None
+
+                    db.save_forecast(
+                        region_code,
+                        area_name,
+                        date,
+                        weather_code,
+                        min_temp if min_temp != '--' else None,
+                        max_temp if max_temp != '--' else None
+                    )
+            else:
+                show_error("天気予報データが見つかりません。")
+        except Exception as e:
+            show_error(f"天気予報の取得に失敗しました: {str(e)}")
+        finally:
+            progress_bar.visible = False
+            page.update()       
 
 
 

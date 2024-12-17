@@ -56,6 +56,14 @@ def get_forecast_history(self, area_code: str = None, start_date: str = None, en
                 params.append(end_date) 
             query += " ORDER BY forecast_date DESC"
             return conn.execute(query, params).fetchall()
+def get_forecast_by_date(self, area_code: str, selected_date: str):
+        # 特定の日付の予報データを取得する
+        with sqlite3.connect(self.db_path) as conn:
+            return conn.execute("""
+                SELECT * FROM weather_forecasts
+                WHERE area_code = ? AND date(forecast_date) = date(?)
+                ORDER BY forecast_date
+            """, (area_code, selected_date)).fetchall()
 # 天気アイコンを取得する関数
 def get_weather_icon(weather_code: str) -> str:
     weather_icons = {

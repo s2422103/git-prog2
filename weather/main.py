@@ -104,6 +104,51 @@ def main(page: ft.Page):
         visible=False,
         expand=True,
     )
+ # 日付が選択されたときに過去の天気予報を表示する関数
+    def on_date_selected(e):
+        if e.date:
+            selected_date = e.date.strftime("%Y-%m-%d")
+            if current_region_code:
+                show_forecast_for_date(current_region_code, selected_date)
+        page.update()
+
+    # 過去の天気予報を表示する関数
+    def show_forecast_for_date(region_code: str, selected_date: str):
+        # DBから過去の天気予報を取得して表示する
+        history_data = db.get_forecast_by_date(region_code, selected_date)
+        if history_data:
+            history_view.visible = True
+            history_view.controls = [
+                ft.Column(
+                    controls=[
+                        ft.Text(f"{area_cache[region_code]['name']}の{selected_date}の予報",
+                               size=20,
+                               weight="bold"),
+                        ft.DataTable(
+                            columns=[
+                                ft.DataColumn(ft.Text("日付")),
+                                ft.DataColumn(ft.Text("天気")),
+                            ],
+                            rows=[
+                                ft.DataRow(
+                                    cells=[
+                                        ft.DataCell(ft.Text(format_date(row[3]))),
+                                        ft.DataCell(ft.Text(f"{get_weather_icon(row[4])} {get_weather_text(row[4])}")),
+                                    ]
+                                ) for row in history_data
+                            ],
+                        )
+                    ],
+                    scroll=ft.ScrollMode.AUTO,
+                )
+            ]
+        else:
+            history_view.visible = True
+            history_view.controls = [
+                ft.Text(f"選択された日付（{selected_date}）の予報データは見つかりませんでした。",
+                       color=ft.colors.ERROR)
+            ]
+        page.update()
 # 天気アイコンを取得する関数
 def get_weather_icon(weather_code: str) -> str:
     weather_icons = {

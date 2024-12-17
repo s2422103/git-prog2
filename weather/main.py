@@ -235,7 +235,57 @@ def main(page: ft.Page):
             show_error(f"天気予報の取得に失敗しました: {str(e)}")
         finally:
             progress_bar.visible = False
-            page.update()       
+            page.update()   
+# 天気予報データを表示する関数
+    def display_forecast(data: Dict):
+        forecast_view.controls.clear()
+        try:
+            weekly_data = data[1]
+            weather_forecasts = weekly_data["timeSeries"][0]
+            temp_forecasts = weekly_data["timeSeries"][1]
+
+            grid = ft.GridView(
+                expand=True,
+                runs_count=4,
+                max_extent=200,
+                child_aspect_ratio=0.8,
+                spacing=10,
+                run_spacing=10,
+                padding=20,
+            )
+
+            # 予報データをカード形式で表示
+            for i in range(len(weather_forecasts["timeDefines"])):
+                date = weather_forecasts["timeDefines"][i]
+                weather_code = weather_forecasts["areas"][0]["weatherCodes"][i]
+
+                try:
+                    min_temp = temp_forecasts["areas"][0]["tempsMin"][i]
+                    max_temp = temp_forecasts["areas"][0]["tempsMax"][i]
+                except (IndexError, KeyError):
+                    min_temp = max_temp = "--"
+
+                card = ft.Card(
+                    content=ft.Container(content=ft.Column(
+                            controls=[
+                                ft.Text(format_date(date), size=16, weight="bold"),
+                                ft.Text(get_weather_icon(weather_code), size=25),
+                                ft.Text(get_weather_text(weather_code), size=16),
+                            ],
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            spacing=10,
+                        ),
+                        padding=20,
+                    )
+                )
+                grid.controls.append(card)
+
+            forecast_view.controls.append(grid)
+
+        except (KeyError, IndexError) as e:
+            show_error("週間予報データの取得に失敗しました。")
+
+        page.update()    
 
 
 
